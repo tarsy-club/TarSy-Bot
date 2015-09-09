@@ -28,17 +28,18 @@ class Start{
 	public function startProject(){
 		//проверяем порты подключения
 		if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off')
-			$service = 'bot'; //https{:443}
-		else 
-			$service = 'web'; //http{:80}
-		$service = 'bot'; //https{:443}
+			$service = 'bot'; else $service = 'web'; ////https{:443} or http{:80}
 		//подключаем ядро
 		$this->getLibArr($this->config->library[$service]['lib'],$this->config->server['core_file']);
 		//подключаем файл старта контроллера
 		$this->getLibStr($this->config->library[$service]['start'],$this->config->server['controller_file']);
-		$start = new StartGetContent($this->config);
 		//запуск и вывод запрашиваемый контент проекта
-		return $start->getContent();
+		if(class_exists('StartGetContent')){
+			$start = new StartGetContent($this->config);
+			return $start->getContent();
+		}else{
+			return false;
+		}
 	}
 }
 ?>

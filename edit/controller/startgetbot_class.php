@@ -7,6 +7,7 @@ class StartGetContent{
 	private $telegram;
 	private $chpu;
 	private $url;
+	private $mes = ['start'=>'start telegramBot<br>','error'=>'404 NOT FOUND!'];
 	private $tableName = array('bot_users','bot_message','bot_story');
 	
 	public function __construct($config){
@@ -16,20 +17,22 @@ class StartGetContent{
 		//получаем в переменной логин бота
 		$this->url 				= $this->chpu->getPathArray();
 		$this->url[1] 			= (isset($this->url[1]) and $this->url[1])?$this->url[1]:key($this->config->telegram);
-		while (	isset($this->config->telegram[$this->url[1]]['router']) and 
-				$this->config->telegram[$this->url[1]]['router']!=$this->url[1] and 
-				file_exists($this->config->server['telegram_file'].$this->config->telegram[$this->url[1]]['router']) ) {
-			//сохраняем новый логин
-			$this->url[2] = $this->config->telegram[$this->url[1]]['router'];
-			//удаляем роутер-ссылку
-			unset($this->config->telegram[$this->url[1]]['router']);
-			//заменяем параметры на актуальные
-			foreach ($this->config->telegram[$this->url[1]] as $key => $value)
-				$this->config->telegram[$this->url[2]][$key] = $value;
-			$this->config->telegram[$this->url[1]] = $this->config->telegram[$this->url[2]];
-			//удаляем старые переменные
-			$this->url[1] = $this->url[2];
-			unset($this->url[2]);
+		if(isset($this->config->telegram[$this->url[1]]['router'])){
+			while (	isset($this->config->telegram[$this->url[1]]) and 
+					$this->config->telegram[$this->url[1]]['router']!=$this->url[1] and 
+					file_exists($this->config->server['telegram_file'].$this->config->telegram[$this->url[1]]['router']) ) {
+				//сохраняем новый логин
+				$this->url[2] = $this->config->telegram[$this->url[1]]['router'];
+				//удаляем роутер-ссылку
+				unset($this->config->telegram[$this->url[1]]['router']);
+				//заменяем параметры на актуальные
+				foreach ($this->config->telegram[$this->url[1]] as $key => $value)
+					$this->config->telegram[$this->url[2]][$key] = $value;
+				$this->config->telegram[$this->url[1]] = $this->config->telegram[$this->url[2]];
+				//удаляем старые переменные
+				$this->url[1] = $this->url[2];
+				unset($this->url[2]);
+			}
 		}
 		//проходимся циклом и применяем настройки БД бота
 		if(isset($this->config->telegram[$this->url[1]]['db']) and $this->config->telegram[$this->url[1]]['db']!==false)
@@ -65,7 +68,8 @@ class StartGetContent{
 			//получаем пользователя
 			$user = $this->db->select($this->tableName[0], '*', "user_login = '".$this->telegram->user->user_login."'" , 'id desc', 1);
 			$this->telegram->user 				= (object) $user[0];
-			$this->db->insert($this->tableName[2], 'user_id', [$this->telegram->user->id]);
+			if($this->url[1]=='arenaofbot')
+				$this->db->insert($this->tableName[2], 'user_id', [$this->telegram->user->id]);
 		}
 		return true;
 	}
@@ -83,14 +87,16 @@ class StartGetContent{
 	}
 
 	public function getContent(){		//проверка какой бот надо запустить
-		if(!isset($this->url[1], $this->config->telegram[$this->url[1]]) or !$this->telegram->parsUrl()) return false;
+		header('Content-Type: text/html; charset=utf-8');
+		print_r($this->mes['start']);
+		if(!isset($this->url[1], $this->config->telegram[$this->url[1]]) or !$this->telegram->parsUrl()) return $this->mes['error'];
 		//получаем в переменную пользователя
-		if($this->config->telegram[$this->url[1]]['db']!==false) if(!$this->checkUser()) return false;
+		if($this->config->telegram[$this->url[1]]['db']!==false) if(!$this->checkUser()) return $this->mes['error'];
 		//получаем обработчик и параметры для него
 		if(!$this->telegram->parsControll()) $this->telegram->getController = 'all_posts';
 		//return '<pre>'.print_r($this->telegram->user,true);
 		//проверка присланного запроса
-		if(!$this->telegram->getContents) return false;
+		if(!$this->telegram->getContents) return $this->mes['error'];
 		//проверка какой контроллер
 		if($this->telegram->getController){//существует
 			//обновляем пользователя
@@ -169,7 +175,8 @@ class StartGetContent{
 			$next = new Handler($this->config, false, $this->telegram);
 		}
 		//запуск класса обработчика
-		return ($next)?$next->getContent():false;
+		$var = ($next)?$next->getContent():false;
+		return ($var)?$var:$this->mes['error'];
 	}
 }
 ?>

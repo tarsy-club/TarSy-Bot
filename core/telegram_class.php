@@ -286,12 +286,16 @@ class Telegram{
         return $header; 
     }
     //подготовка к передаче запроса
+
     public function sendFile($format=false, $to=false, $filepath=false, $parent=false){
         switch ($format) {
             case 'photo':
                 //подставляем в запрос
-                $fields = array( "chat_id" => $to, "$format" => "@".$filepath );
-                foreach ($parent as $key => $value) $fields[$key] = $value;
+                if(substr($filepath,0,4)=='http')
+                    $fields = array( "chat_id" => $to, "$format" => file_get_contents($filepath) );
+                else
+                    $fields = array( "chat_id" => $to, "$format" => "@".$filepath );
+                if($parent) foreach ($parent as $key => $value) $fields[$key] = $value;
                 return $this->curlExec($this->url."/bot".$this->config->telegram[$this->botname]['hash']."/sendPhoto", $fields, $format);
                 break;
             case 'audio':
