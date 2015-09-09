@@ -335,13 +335,13 @@ class Telegram{
         //проверка существования бота
         if(!$this->botname or !file_exists($this->config->server['telegram_file'].$this->botname)) return false;
         //сохраняем в переменную пользователя отправившего запрос
-        if(!isset($this->getContents->message->from->id, 
-            $this->getContents->message->from->username, 
-            $this->getContents->message->from->first_name, 
-            $this->getContents->message->from->last_name)) return false;
+        if(!isset($this->getContents->message->from->id)) return false;
         $this->user->user_id      = $this->getContents->message->from->id;
-        $this->user->user_login   = $this->getContents->message->from->username;
-        $this->user->user_name    = $this->getContents->message->from->first_name.' '.$this->getContents->message->from->last_name;
+        $this->user->user_login   = isset($this->getContents->message->from->username)?$this->getContents->message->from->username:$this->getContents->message->from->id;
+        $this->user->user_name    = [];
+        if(isset($this->getContents->message->from->first_name)) $this->user->user_name[] = $this->getContents->message->from->first_name;
+        if(isset($this->getContents->message->from->last_name))  $this->user->user_name[] = $this->getContents->message->from->last_name;
+        $this->user->user_name    = isset($this->user->user_name[0])?implode(" ", $this->user->user_name):'Not name';
         $this->user->mess         = '';
         return true;
     }
