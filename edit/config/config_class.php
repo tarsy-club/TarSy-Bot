@@ -33,7 +33,7 @@
 			'_testing' 				=> array(
 				'db'					=> array(
 					'database'				=> 'tarsy_bot',
-					'prefix' 				=> ''),
+					'prefix' 				=> 'bot_'),
 			),
 			'botLogin' 				=> array(
 				'hash'					=> 'token',
@@ -65,7 +65,7 @@
 			'username' 				=> 'tarsy',								//имя пользователя
 			'password' 				=> '0000',								//пароль пользователя
 			'database' 				=> 'tarsy_cms',							//имя БД
-			'prefix' 				=> 'tarsy_',							//префик для БД
+			'prefix' 				=> 'cms_',							//префик для БД
 			'dbdriver' 				=> 'PDO', 								//способ подключения
 			'dbcollat' 				=> 'UTF8'								//кодировка БД
 		);
