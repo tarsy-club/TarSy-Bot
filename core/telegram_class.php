@@ -378,9 +378,9 @@ class Telegram{
     }
     //формирование запроса
     public function parsControll(){
-        $this->user->user_lang = isset($this->user->user_lang)?$this->user->user_lang:current($this->config->server['langin']); //язык для входного текста
-        $lang           = $this->user->user_lang; //язык для входного текста
-        $this->router   = array();
+        $this->user->user_lang  = isset($this->user->user_lang)?$this->user->user_lang:current($this->config->server['langin']); //язык для входного текста
+        $lang                   = $this->user->user_lang; //язык для входного текста
+        $this->router           = array();
         //проверка переадресации бота
         if(isset($this->config->telegram[$this->botname]['router']) and 
             file_exists($this->config->server['telegram_file'].$this->config->telegram[$this->botname]['router']))
@@ -401,49 +401,66 @@ class Telegram{
             }
         }
         //проверка необходимых параметров
-        if(!isset($this->getContents->message->text)) return false;
-        //парсим
-        $text = explode(' ', $this->getContents->message->text);
-        //проверяем пришло имя контроллера или нет
-        if(isset($text[0]) and substr($text[0],0,1)=='/'){//указан контроллер
-            //проверка наличие контроллера
-            if(file_exists($this->config->server['telegram_file'].$this->botname.'/'.substr($text[0],1).".php")){
-                $this->getController = substr($text[0],1); //контроллер
-                $this->getMessage = (isset($text[1]))?array_splice($text,1):false; //параметры
-            }else $this->getMessage = $text; //параметры
-        }else{//параметры или команда для роутера
-            //проверка наличие роутера
-            if(count($this->router)>0){
-                //доп.параметры
-                $id     = false; //выходное контроллер
-                //поиск id контроллера
-                for($i=0; isset($router[$i]); $i++){
-                    //преобразуем данные
-                    $router[$i][$lang] = str_replace(' ', '\s', $router[$i][$lang]);
-                    if(preg_match("/^".$router[$i][$lang]."/i", $this->getContents->message->text)) //нашел нужный котроллер
-                        if(file_exists($this->config->server['telegram_file'].$this->botname."/".$router[$i]['controller'].".php")) //проверка сужествует ли сам контроллер
-                            $id = $router[$i]['id']; //сохраняем id контроллера
-                }
-                if($id>0){
-                    //получаем данные
-                    $router = $this->router[$id];
-                    //удаляем из сообщения имя контроллера и образовавшиеся пробелы
-                    $router[$lang] = str_replace('\s', ' ', $router[$lang]);
-                    $text = trim(str_replace($router[$lang], '', $this->getContents->message->text));
-                    $text = explode(' ', $text);
-                    //присваеаем в переменные
-                    $this->getController    = $router['controller'];
-                    $this->getMessage       = (isset($text[0]))?$text:false;
-                }else //сохраняем то что пришло в параметры
-                    $this->getMessage       = (isset($text[0]))?$text:false;
-            }else $this->getMessage         = (isset($text[0]))?$text:false; //параметры
+        if(isset($this->getContents->message->text)){
+            //парсим
+            $text = explode(' ', $this->getContents->message->text);
+            //проверяем пришло имя контроллера или нет
+            if(isset($text[0]) and substr($text[0],0,1)=='/'){//указан контроллер
+                //проверка наличие контроллера
+                if(file_exists($this->config->server['telegram_file'].$this->botname.'/'.substr($text[0],1).".php")){
+                    $this->getController = substr($text[0],1); //контроллер
+                    $this->getMessage = (isset($text[1]))?array_splice($text,1):false; //параметры
+                }else $this->getMessage = $text; //параметры
+            }else{//параметры или команда для роутера
+                //проверка наличие роутера
+                if(count($this->router)>0){
+                    //доп.параметры
+                    $id     = false; //выходное контроллер
+                    //поиск id контроллера
+                    for($i=0; isset($router[$i]); $i++){
+                        //преобразуем данные
+                        $router[$i][$lang] = str_replace(' ', '\s', $router[$i][$lang]);
+                        if(preg_match("/^".$router[$i][$lang]."/i", $this->getContents->message->text)) //нашел нужный котроллер
+                            if(file_exists($this->config->server['telegram_file'].$this->botname."/".$router[$i]['controller'].".php")) //проверка сужествует ли сам контроллер
+                                $id = $router[$i]['id']; //сохраняем id контроллера
+                    }
+                    if($id>0){
+                        //получаем данные
+                        $router = $this->router[$id];
+                        //удаляем из сообщения имя контроллера и образовавшиеся пробелы
+                        $router[$lang] = str_replace('\s', ' ', $router[$lang]);
+                        $text = trim(str_replace($router[$lang], '', $this->getContents->message->text));
+                        $text = explode(' ', $text);
+                        //присваеаем в переменные
+                        $this->getController    = $router['controller'];
+                        $this->getMessage       = (isset($text[0]))?$text:false;
+                    }else //сохраняем то что пришло в параметры
+                        $this->getMessage       = (isset($text[0]))?$text:false;
+                }else $this->getMessage         = (isset($text[0]))?$text:false; //параметры
+            }
+            //преобразуем кирилицу для параметров
+            $temp = array();
+            for($i=0; isset($this->getMessage[$i]); $i++)
+                if($this->getMessage[$i]) $temp[] = $this->json_fix_cyr($this->getMessage[$i]);
+            $this->getMessage = (isset($temp[0]))?$temp:false;
+            return true;
+        }else if(isset($this->getContents->message->photo)){ //отправка файлов текущему контроллеру
+            $this->getMessage = ["#photo"];
+            return true;
+        }else if(isset($this->getContents->message->audio)){ //отправка файлов текущему контроллеру
+            $this->getMessage = ["#audio"];
+            return true;
+        }else if(isset($this->getContents->message->document)){ //отправка файлов текущему контроллеру
+            $this->getMessage = ["#document"];
+            return true;
+        }else if(isset($this->getContents->message->video)){ //отправка файлов текущему контроллеру
+            $this->getMessage = ["#video"];
+            return true;
+        }else if(isset($this->getContents->message->sticker)){ //отправка файлов текущему контроллеру
+            $this->getMessage = ["#sticker"];
+            return true;
         }
-        //преобразуем кирилицу для параметров
-        $temp = array();
-        for($i=0; isset($this->getMessage[$i]); $i++)
-            if($this->getMessage[$i]) $temp[] = $this->json_fix_cyr($this->getMessage[$i]);
-        $this->getMessage = (isset($temp[0]))?$temp:false;
-        return true;
+        return false;
     }
     //конвертируем запроса
     public function convert($parset=array()){

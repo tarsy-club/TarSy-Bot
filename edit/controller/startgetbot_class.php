@@ -7,8 +7,10 @@ class StartGetContent{
 	private $telegram;
 	private $chpu;
 	private $url;
-	private $mes = ['start'=>'start telegramBot<br>','error'=>'404 NOT FOUND!'];
-	private $tableName = array('bot_users','bot_message','bot_story');
+	private $mes 				= ['start'=>'start telegramBot<br>','error'=>'404 NOT FOUND!'];
+	private $tableName 			= array('bot_users','bot_message','bot_story');
+	private $returnController 	= 'all_posts';
+
 	
 	public function __construct($config){
 		$this->config 			= $config;
@@ -68,8 +70,8 @@ class StartGetContent{
 			//получаем пользователя
 			$user = $this->db->select($this->tableName[0], '*', "user_login = '".$this->telegram->user->user_login."'" , 'id desc', 1);
 			$this->telegram->user 				= (object) $user[0];
-			if($this->url[1]=='arenaofbot')
-				$this->db->insert($this->tableName[2], 'user_id', [$this->telegram->user->id]);
+			//добавление статов для пользователя арены
+			if($this->url[1]=='arenaofbot') $this->db->insert($this->tableName[2], 'user_id', [$this->telegram->user->id]);
 		}
 		return true;
 	}
@@ -93,10 +95,10 @@ class StartGetContent{
 		//получаем в переменную пользователя
 		if($this->config->telegram[$this->url[1]]['db']!==false) if(!$this->checkUser()) return $this->mes['error'];
 		//получаем обработчик и параметры для него
-		if(!$this->telegram->parsControll()) $this->telegram->getController = 'all_posts';
-		//return '<pre>'.print_r($this->telegram->user,true);
+		if(!$this->telegram->parsControll()) $this->telegram->getController = $this->returnController;
 		//проверка присланного запроса
 		if(!$this->telegram->getContents) return $this->mes['error'];
+		//return '<pre>'.print_r($this->telegram->user,true);
 		//проверка какой контроллер
 		if($this->telegram->getController){//существует
 			//обновляем пользователя
@@ -150,13 +152,13 @@ class StartGetContent{
 						$temp[] = $this->telegram->getMessage[$i];
 					}
 					//перезапись параметров
-					$this->telegram->getController 	= 'all_posts';
+					$this->telegram->getController 	= $this->returnController;
 					$this->telegram->getMessage 	= isset($temp[0])?$temp:false;
 					$this->telegram->user->mess 	= ($this->telegram->user->mess)?"/".$this->telegram->getController." ".$this->telegram->user->mess:"/".$this->telegram->getController;
 				}
 	        }else{//истории сообщений нету
 				//перезапись параметров
-				$this->telegram->getController = 'all_posts';
+				$this->telegram->getController = $this->returnController;
 				$this->telegram->getMessage = isset($this->telegram->getMessage[0])?$this->telegram->getMessage:false;
         		$this->telegram->user->mess = '';
 			}
