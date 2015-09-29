@@ -217,21 +217,22 @@ class LoadServerImg{
 		if (!$w_i || !$h_i) {
 			echo 'Невозможно получить длину и ширину изображения';
 			return;
-		  }
-		  $types = array('','gif','jpeg','png');
-		  $ext = $types[$type];
-		  if ($ext) {
-		  	$func = 'imagecreatefrom'.$ext;
-		  	$img = $func($file_input);
-		  } else {
-		  	echo 'Некорректный формат файла';
+		}
+		$types = array('','gif','jpeg','png');
+		$ext = $types[$type];
+		if ($ext) {
+			$func = 'imagecreatefrom'.$ext;
+			$img = $func($file_input);
+		} else {
+			echo 'Некорректный формат файла';
 			return;
-		  }
+		}
 		if ($crop == 'square') {
-			$min = $w_i;
-			if ($w_i > $h_i) $min = $h_i;
+			$min = ($w_i > $h_i) ? $h_i : $w_i;
 			$w_o = $h_o = $min;
-			$x_o = 0; $y_o = 0;
+			// Выравнивание по центру:
+			$x_o = intval(($w_i - $min) / 2);
+			$y_o = intval(($h_i - $min) / 2);
 		} else {
 			list($x_o, $y_o, $w_o, $h_o) = $crop;
 			if ($percent) {
@@ -240,10 +241,6 @@ class LoadServerImg{
 				$x_o *= $w_i / 100;
 				$y_o *= $h_i / 100;
 			}
-		  	if ($w_o < 0) $w_o += $w_i;
-			  $w_o -= $x_o;
-			 	if ($h_o < 0) $h_o += $h_i;
-			$h_o -= $y_o;
 		}
 		$img_o = imagecreatetruecolor($w_o, $h_o);
 		imagecopy($img_o, $img, 0, 0, $x_o, $y_o, $w_o, $h_o);
