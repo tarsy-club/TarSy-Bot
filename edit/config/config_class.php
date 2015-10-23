@@ -17,6 +17,7 @@
 			'css_file' 				=> 'file/css/',							//директория стилей
 			'js_file' 				=> 'file/js/',							//директория скриптов
 			'error_file' 			=> 'file/error/',						//дириктория контроллеров
+			'cache_file'			=> 'edit/cache/',						//директория кэша
 			'user_file'				=> 'edit/panel/user/',					//директория для пользователей
 			'admin_file'			=> 'edit/panel/admin/',					//директория для админки
 			'shablon_file'			=> 'edit/tpl/shablon/',					//директория шаблонов
@@ -78,10 +79,12 @@
 											'telegram',
 											'gettextfile',
 											'chpu'),
+				'cache'					=> false,
 									),
 			'web' 					=> array(
 				'start'					=> 'startgetweb',
 				'lib'					=> array(),
+				'cache'					=> true,
 									),
 		);
 	}
