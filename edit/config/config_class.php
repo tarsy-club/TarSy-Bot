@@ -79,12 +79,12 @@
 											'telegram',
 											'gettextfile',
 											'chpu'),
-				'cache'					=> false,
+				'cache'					=> 1,
 									),
 			'web' 					=> array(
 				'start'					=> 'startgetweb',
 				'lib'					=> array(),
-				'cache'					=> true,
+				'cache'					=> 1,
 									),
 		);
 	}

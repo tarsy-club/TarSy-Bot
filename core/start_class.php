@@ -15,16 +15,19 @@ class Start{
 		$i++;}
 		return true;
 	}
-	private function opneCache($location=false,$text=false){
-		if(!$location) return false;
+	private function opneCache($location=false, $time=false, $text=false){
+		if(!$location or !$time) return false;
 		if($text){
+			$time += time();
 			$fp = fopen("$location.cache", 'w');
-			fwrite($fp, $text);
+			fwrite($fp, "$time||$text");
 			fclose($fp);
-			return $text;
 		}else{
-			return (file_exists("$location.cache"))? fread(fopen("$location.cache",'rb'),filesize("$location.cache")) : false;
+			$text = (file_exists("$location.cache"))? fread(fopen("$location.cache",'rb'),filesize("$location.cache")) : false;
+			$time = mb_substr($text, 0, 10)+0;
+			$text = ($time > time())?mb_substr($text, 12):false;
 		}
+		return $text;
 	}
 	public function getLibStr($name='',$location=''){
 		//проверка существования файла
@@ -46,18 +49,39 @@ class Start{
 			if( !preg_match( "/^\/(".$this->config->router['prefix_adm']."|".
 									$this->config->router['prefix_ajax']."|".
 									$this->config->router['prefix_search']."|".
-									$this->config->router['prefix_error']."|".
 									$this->config->router['prefix_user'].")\/(.*)/", $var_url ) ) {
-				$time = 60*60*24;
+				$time = 60*60*( (int) $this->config->library[$service]['cache'] );
 				header('Content-type: text/html; charset=UTF-8');
 				header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $time) . ' GMT');
 				header("Cache-Control: private, max-age=$time");
 			}
-
-			$location = $this->config->server['cache_file']."$service/".md5($var_url).".cache";
+			$location = $this->config->server['cache_file'];
+			if(!file_exists($location)){
+				mkdir($location);
+				chmod($location, 0777);
+			}
+			$location = $this->config->server['cache_file']."$service";
+			if(!file_exists($location)){
+				mkdir($location);
+				chmod($location, 0777);
+			}
+			$location = "$location/".md5($var_url).".cache";
 			//проверка существует ли кэш
 			if(file_exists($location)){
-				$html = $this->opneCache($location);
+				if(!$html = $this->opneCache($location, $time)){
+					unlink($location);
+					//подключаем ядро
+					$this->getLibArr($this->config->library[$service]['lib'],$this->config->server['core_file']);
+					//подключаем файл старта контроллера
+					$this->getLibStr($this->config->library[$service]['start'],$this->config->server['controller_file']);
+					//запуск и вывод запрашиваемый контент проекта
+					if(class_exists('StartGetContent')){
+						$start = new StartGetContent($this->config);
+						$html = $start->getContent();
+					}else return false;
+					return $this->opneCache($location, $time, $html);
+				}
+				return $html;
 			}else{
 				//подключаем ядро
 				$this->getLibArr($this->config->library[$service]['lib'],$this->config->server['core_file']);
@@ -67,10 +91,8 @@ class Start{
 				if(class_exists('StartGetContent')){
 					$start = new StartGetContent($this->config);
 					$html = $start->getContent();
-				}else{
-					return false;
-				}
-				return $this->opneCache($location, $html);
+				}else return false;
+				return $this->opneCache($location, $time, $html);
 			}
 		}else{
 			//подключаем ядро
