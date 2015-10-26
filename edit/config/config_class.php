@@ -79,7 +79,7 @@
 											'telegram',
 											'gettextfile',
 											'chpu'),
-				'cache'					=> 1,
+				'cache'					=> false,
 									),
 			'web' 					=> array(
 				'start'					=> 'startgetweb',

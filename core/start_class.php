@@ -55,12 +55,12 @@ class Start{
 				header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $time) . ' GMT');
 				header("Cache-Control: private, max-age=$time");
 			}
-			$location = $this->config->server['cache_file'];
+			$location = substr($this->config->server['cache_file'], 0, -1);
 			if(!file_exists($location)){
 				mkdir($location);
 				chmod($location, 0777);
 			}
-			$location = $this->config->server['cache_file']."$service";
+			$location = $this->config->server['cache_file']."/$service";
 			if(!file_exists($location)){
 				mkdir($location);
 				chmod($location, 0777);
@@ -69,7 +69,6 @@ class Start{
 			//проверка существует ли кэш
 			if(file_exists($location)){
 				if(!$html = $this->opneCache($location, $time)){
-					unlink($location);
 					//подключаем ядро
 					$this->getLibArr($this->config->library[$service]['lib'],$this->config->server['core_file']);
 					//подключаем файл старта контроллера
@@ -106,7 +105,7 @@ class Start{
 			}else{
 				return false;
 			}
-		}
+		}//*/
 	}
 }
 ?>
