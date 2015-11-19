@@ -1,8 +1,10 @@
 <?php
-require_once "edit/config/config_class.php";
 class Start{
 	public $config;
+	public $dir;
 	public function __construct(){
+		$this->dir = __DIR__.'/../';
+		require_once $this->dir."edit/config/config_class.php";
 		$this->config = new Config();
 		//mb_internal_encoding($this->config->server['char_set']);
 		header("Content-Type: text/html; charset=".$this->config->server['char_set']);
@@ -11,7 +13,8 @@ class Start{
 		$i=0;
 		while(isset($varAr[$i])){
 			//проверка существования файла
-			if (file_exists($location.$varAr[$i]."_class.php")) require_once $location.$varAr[$i]."_class.php";
+			if (file_exists($this->dir.$location.$varAr[$i]."_class.php")) 
+				require_once $this->dir.$location.$varAr[$i]."_class.php";
 		$i++;}
 		return true;
 	}
@@ -19,11 +22,11 @@ class Start{
 		if(!$location or !$time) return false;
 		if($text){
 			$time += time();
-			$fp = fopen("$location.cache", 'w');
+			$fp = fopen($location, 'w');
 			fwrite($fp, "$time||$text");
 			fclose($fp);
 		}else{
-			$text = (file_exists("$location.cache"))? fread(fopen("$location.cache",'rb'),filesize("$location.cache")) : false;
+			$text = (file_exists($location))? fread(fopen($location,'rb'),filesize($location)) : false;
 			$time = mb_substr($text, 0, 10)+0;
 			$text = ($time > time())?mb_substr($text, 12):false;
 		}
@@ -31,12 +34,14 @@ class Start{
 	}
 	public function getLibStr($name='',$location=''){
 		//проверка существования файла
-		if (file_exists($location.$name."_class.php")) require_once $location.$name."_class.php";
+		if (file_exists($this->dir.$location.$name."_class.php")) 
+			require_once $this->dir.$location.$name."_class.php";
 		return true;
 	}
 	public function getLibStr2($name='',$location=''){
 		//проверка существования файла
-		if (file_exists($location.$name.".php")) require_once $location.$name.".php";
+		if (file_exists($this->dir.$location.$name.".php")) 
+			require_once $this->dir.$location.$name.".php";
 		return true;
 	}
 	public function startProject(){
@@ -55,12 +60,12 @@ class Start{
 				header('Expires: ' . gmdate('D, d M Y H:i:s', time() + $time) . ' GMT');
 				header("Cache-Control: private, max-age=$time");
 			}
-			$location = substr($this->config->server['cache_file'], 0, -1);
+			$location = $this->dir.substr($this->config->server['cache_file'], 0, -1);
 			if(!file_exists($location)){
 				mkdir($location);
 				chmod($location, 0777);
 			}
-			$location = $this->config->server['cache_file']."/$service";
+			$location = $this->dir.$this->config->server['cache_file']."$service";
 			if(!file_exists($location)){
 				mkdir($location);
 				chmod($location, 0777);

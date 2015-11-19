@@ -48,44 +48,29 @@ class StartGetContent{
 	private function checkUser(){
 		$time = time();
 		//получаем пользователя
-		$where = "user_id='".$this->telegram->user->user_id."'";
-		$user = $this->db->select($this->tableName[0], '*', $where , false, 1);
+		$user = $this->db->zak_query("SELECT * FROM `bot_users` WHERE `user_id` = ? LIMIT 1 ", array($this->telegram->user->user_id) );
 		if(isset($user[0])){
 			//проверка блокировки пользователя
 			if($user[0]['visible']==0) return false;
 			//обновляем данные
-			$this->telegram->user 				= (object)$user[0];
-			$this->db->update($this->tableName[0],"timeupdate=$time","id=".$this->telegram->user->id);
+			$this->telegram->user 	= (object) $user[0];
 		}else{
 			//добавляем пользователя в БД
-			$where 	= 'user_id, user_login, user_name, user_lang, timeupdate, timeadd';
-			$set 	= array();
-			$set[] 	= $this->telegram->user->user_id;
-			$set[] 	= $this->telegram->user->user_login;
-			$set[] 	= $this->telegram->user->user_name;
-			$set[] 	= current($this->config->server['langin']);
-			$set[] 	= $time;
-			$set[] 	= $time;
-			$this->db->insert($this->tableName[0], $where, $set);
+			$user_id  = $this->db->zak_insert("INSERT INTO `bot_users`(`user_id`, `user_login`, `user_name`, `user_lang`, `timeupdate`, `timeadd`) VALUES (?, ?, ?, ?, ?, ?)",
+											array( $this->telegram->user->user_id, $this->telegram->user->user_login, $this->telegram->user->user_name, current($this->config->server['langin']), $time, $time ));
 			//получаем пользователя
-			$user = $this->db->select($this->tableName[0], '*', "user_login = '".$this->telegram->user->user_login."'" , 'id desc', 1);
-			$this->telegram->user 				= (object) $user[0];
+			$user = $this->db->zak_query("SELECT * FROM `bot_users` WHERE `user_id` = ? LIMIT 1 ", array($user_id));
+			//обновляем данные
+			$this->telegram->user 	= (object) $user[0];
 			//добавление статов для пользователя арены
-			if($this->url[1]=='arenaofbot') $this->db->insert($this->tableName[2], 'user_id', [$this->telegram->user->id]);
+			if($this->url[1]=='arenaofbot') $this->db->zak_insert("INSERT INTO `bot_story`(`user_id`) VALUES (?)", array( $this->telegram->user->id ));
 		}
 		return true;
 	}
 	private function saveMessage(){
 		//сохраняем в БД сообщение
-		$where 	= 'user_id, controller, mess, mess_obj, timeadd';
-		$set 	= array();
-		$set[] 	= $this->telegram->user->id;
-		$set[] 	= $this->telegram->getController;
-		$set[] 	= $this->telegram->user->mess;
-		$set[] 	= json_encode($this->telegram->getContents->message);
-		$set[] 	= $this->telegram->getContents->message->date;
-		$this->db->insert($this->tableName[1],$where, $set);
-		return true;
+		return $this->db->zak_insert("INSERT INTO `bot_message`(`user_id`, `controller`, `mess`, `mess_obj`, `timeadd`) VALUES (?, ?, ?, ?, ?)",
+										array( $this->telegram->user->id, $this->telegram->getController, $this->telegram->user->mess, json_encode($this->telegram->getContents->message), $this->telegram->getContents->message->date ));
 	}
 
 	public function getContent(){		//проверка какой бот надо запустить
@@ -98,12 +83,12 @@ class StartGetContent{
 		if(!$this->telegram->parsControll()) $this->telegram->getController = $this->returnController;
 		//проверка присланного запроса
 		if(!$this->telegram->getContents) return $this->mes['error'];
-		//return '<pre>'.print_r($this->telegram->user,true);
 		//проверка какой контроллер
 		if($this->telegram->getController){//существует
 			//обновляем пользователя
 			if(isset($this->telegram->getMessage[0])){
-				$this->telegram->user->mess = '/'.$this->telegram->getController.' '.$this->telegram->json_fix_cyr($this->telegram->json_img_cyr(implode(' ', $this->telegram->getMessage)));
+				//$this->telegram->user->mess = '/'.$this->telegram->getController.' '.$this->telegram->json_fix_cyr($this->telegram->json_img_cyr(implode(' ', $this->telegram->getMessage)));
+				$this->telegram->user->mess = '/'.$this->telegram->getController.' '.implode(' ', $this->telegram->getMessage);
 			}else{
 				$this->telegram->user->mess = '/'.$this->telegram->getController;
 				$this->telegram->getMessage = false;
@@ -126,8 +111,6 @@ class StartGetContent{
 					$temp = ($this->telegram->user->mess)?explode(' ', $this->telegram->user->mess):array();
 					//проходим и дополняе параметры
 					for ($i=0; isset($this->telegram->getMessage[$i]); $i++) { 
-						//преобразование
-						$this->telegram->getMessage[$i] = $this->telegram->json_fix_cyr($this->telegram->json_img_cyr($this->telegram->getMessage[$i]));
 						//текстовые параметры
 						if(!$i) $this->telegram->user->mess = ($this->telegram->user->mess)?$this->telegram->user->mess.' '.$this->telegram->getMessage[$i]:$this->telegram->getMessage[$i];
 						else $this->telegram->user->mess = $this->telegram->user->mess.' '.$this->telegram->getMessage[$i];
@@ -143,8 +126,6 @@ class StartGetContent{
 					$temp = ($this->telegram->user->mess)?explode(' ', $this->telegram->user->mess):array();
 					//проходим и дополняе параметры
 					for ($i=0; isset($this->telegram->getMessage[$i]); $i++) { 
-						//преобразование
-						$this->telegram->getMessage[$i] = $this->telegram->json_fix_cyr($this->telegram->json_img_cyr($this->telegram->getMessage[$i]));
 						//текстовые параметры
 						if(!$i) $this->telegram->user->mess = ($this->telegram->user->mess)?$this->telegram->user->mess.' '.$this->telegram->getMessage[$i]:$this->telegram->getMessage[$i];
 						else $this->telegram->user->mess = $this->telegram->user->mess.' '.$this->telegram->getMessage[$i];
@@ -165,7 +146,7 @@ class StartGetContent{
 		}
 		if($this->config->telegram[$this->url[1]]['db']!==false){
         	//обновляем БД
-			$this->db->update($this->tableName[0],"mess='".addslashes($this->telegram->user->mess)."'","id=".$this->telegram->user->id);
+			$this->db->zak_update("UPDATE `bot_users` SET `mess`=?, `timeupdate`=? WHERE `id` = ?", array( $this->telegram->user->mess, time(), $this->telegram->user->id ));
 			//сохраняем в БД само сообщение
 			$this->saveMessage();
 			//подключения класса-обработчика

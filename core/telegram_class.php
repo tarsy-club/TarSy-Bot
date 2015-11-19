@@ -2,10 +2,12 @@
 class Telegram{
 
     public  $getContents;
+    public  $phpVrs;
     public  $getController  = false;
     public  $getMessage     = false;
     public  $botname;
     public  $user           = array();
+    public  $mess           = array();
     private $testing        = false;
     private $zapros         = '';
     private $config;
@@ -199,16 +201,18 @@ class Telegram{
     public function __construct($config=false,$botname=false){
         $this->config   = $config;
         $this->botname  = $botname;
-        if( isset($this->config->telegram[$this->botname]['test'], $this->config->telegram[$this->botname]['test']['mess']) and 
-            $this->config->telegram[$this->botname]['test']['start']===true){
+        if( isset($this->config[$this->botname]['test'], $this->config[$this->botname]['test']['mess']) and 
+            $this->config[$this->botname]['test']['start']===true){
             $this->testing  = true;
-            $this->zapros   = $this->config->telegram[$this->botname]['test']['mess'];
+            $this->zapros   = $this->config[$this->botname]['test']['mess'];
         }
         $this->user     = (object)$this->user;
+        //проверка версии, не ниже 5.5
+        $this->phpVrs   = explode('.', phpversion());
+        $this->phpVrs   = ($this->phpVrs[0]==5 and $this->phpVrs[1]>4 or $this->phpVrs[0]>5)?true:false;
     }
     //конвертер кирилицы
     public function json_fix_cyr($json_str){
-        //return $json_str;
         $cyr_chars = array (
             '\\/' => '/', '\\"' => '"', '\\\\' => '\\',
             '\u0430' => 'а', '\u0410' => 'А', '\u0431' => 'б', '\u0411' => 'Б', 
@@ -231,6 +235,10 @@ class Telegram{
         ); 
         foreach ($cyr_chars as $cyr_char_key => $cyr_char) $json_str = str_replace($cyr_char_key, $cyr_char, $json_str); 
         return $json_str; 
+    }
+    //конвертер кирилицы
+    public function json_fix_mess($json_str){
+        return $this->json_fix_cyr(mb_substr(json_encode($json_str), 1, -1));
     }
     //конвертер img
     public function json_img_cyr($json_str){
@@ -270,6 +278,7 @@ class Telegram{
         if (!empty($postFields)){
             //$field_string = http_build_query($postFields);
             curl_setopt($ch,CURLOPT_POST, 1);
+            if($this->phpVrs) curl_setopt($ch,CURLOPT_SAFE_UPLOAD, 1);
             curl_setopt($ch,CURLOPT_POSTFIELDS, $postFields);
         }
         //обрабатываем полученные данные
@@ -291,37 +300,53 @@ class Telegram{
         switch ($format) {
             case 'photo':
                 //подставляем в запрос
-                if(substr($filepath,0,4)=='http')
-                    $fields = array( "chat_id" => $to, "$format" => file_get_contents($filepath) );
-                else
-                    $fields = array( "chat_id" => $to, "$format" => "@".$filepath );
+                $fields = ($this->phpVrs)? array( "chat_id" => $to, "$format" => new CURLFile($filepath) ) : array( "chat_id" => str_replace('@', '', $to), "$format" => "@".$filepath );
                 if($parent) foreach ($parent as $key => $value) $fields[$key] = $value;
-                return $this->curlExec($this->url."/bot".$this->config->telegram[$this->botname]['hash']."/sendPhoto", $fields, $format);
+                return $this->curlExec($this->url."/bot".$this->config[$this->botname]['hash']."/sendPhoto", $fields, $format);
                 break;
             case 'audio':
                 //подставляем в запрос
-                $fields = array( "chat_id" => $to, "$format" => "@".$filepath );
+                $fields = ($this->phpVrs)? array( "chat_id" => $to, "$format" => new CURLFile($filepath) ) : array( "chat_id" => str_replace('@', '', $to), "$format" => "@".$filepath );
                 foreach ($parent as $key => $value) $fields[$key] = $value;
-                return $this->curlExec($this->url."/bot".$this->config->telegram[$this->botname]['hash']."/sendAudio", $fields, $format);
+                return $this->curlExec($this->url."/bot".$this->config[$this->botname]['hash']."/sendAudio", $fields, $format);
                 break;
             case 'video':
                 //подставляем в запрос
-                $fields = array( "chat_id" => $to, "$format" => "@".$filepath );
+                $fields = ($this->phpVrs)? array( "chat_id" => $to, "$format" => new CURLFile($filepath) ) : array( "chat_id" => str_replace('@', '', $to), "$format" => "@".$filepath );
                 foreach ($parent as $key => $value) $fields[$key] = $value;
-                return $this->curlExec($this->url."/bot".$this->config->telegram[$this->botname]['hash']."/sendVideo", $fields, $format);
+                return $this->curlExec($this->url."/bot".$this->config[$this->botname]['hash']."/sendVideo", $fields, $format);
+                break;
+            case 'voice':
+                //подставляем в запрос
+                $fields = ($this->phpVrs)? array( "chat_id" => $to, "$format" => new CURLFile($filepath) ) : array( "chat_id" => str_replace('@', '', $to), "$format" => "@".$filepath );
+                foreach ($parent as $key => $value) $fields[$key] = $value;
+                return $this->curlExec($this->url."/bot".$this->config[$this->botname]['hash']."/sendVoice", $fields, $format);
                 break;
             case 'document':
                 //подставляем в запрос
-                $fields = array( "chat_id" => $to, "$format" => "@".$filepath );
+                $fields = ($this->phpVrs)? array( "chat_id" => $to, "$format" => new CURLFile($filepath) ) : array( "chat_id" => str_replace('@', '', $to), "$format" => "@".$filepath );
                 foreach ($parent as $key => $value) $fields[$key] = $value;
-                return $this->curlExec($this->url."/bot".$this->config->telegram[$this->botname]['hash']."/sendDocument", $fields, $format);
+                return $this->curlExec($this->url."/bot".$this->config[$this->botname]['hash']."/sendDocument", $fields, $format);
                 break;
             case 'sticker':
                 //подставляем в запрос
-                $fields = array( "chat_id" => $to, "$format" => "@".$filepath );
+                $fields = ($this->phpVrs)? array( "chat_id" => $to, "$format" => new CURLFile($filepath) ) : array( "chat_id" => str_replace('@', '', $to), "$format" => "@".$filepath );
                 foreach ($parent as $key => $value) $fields[$key] = $value;
-                return $this->curlExec($this->url."/bot".$this->config->telegram[$this->botname]['hash']."/sendSticker", $fields, $format);
+                return $this->curlExec($this->url."/bot".$this->config[$this->botname]['hash']."/sendSticker", $fields, $format);
                 break;
+            case 'certificate':
+                //подставляем в запрос
+                $fields = ($this->phpVrs)? array( "url" => $to, "$format" => new CURLFile($filepath) ) : array( "chat_id" => str_replace('@', '', $to), "$format" => "@".$filepath );
+                foreach ($parent as $key => $value) $fields[$key] = $value;
+                return $this->curlExec($this->url."/bot".$this->config[$this->botname]['hash']."/setWebhook", $fields, $format);
+                break;
+        }
+        return false;
+    }
+
+    public function getFile($file_id=false){
+        if ($file_id) {
+            return file_get_contents($this->url."/bot".$this->config[$this->botname]['hash']."/getFile?file_id=".$file_id);
         }
         return false;
     }
@@ -382,9 +407,9 @@ class Telegram{
         $lang                   = $this->user->user_lang; //язык для входного текста
         $this->router           = array();
         //проверка переадресации бота
-        if(isset($this->config->telegram[$this->botname]['router']) and 
-            file_exists($this->config->server['telegram_file'].$this->config->telegram[$this->botname]['router']))
-            $this->botname = $this->config->telegram[$this->botname]['router'];
+        if(isset($this->config[$this->botname]['router']) and 
+            file_exists($this->config->server['telegram_file'].$this->config[$this->botname]['router']))
+            $this->botname = $this->config[$this->botname]['router'];
         //обработка файла роутера
         $router     = $this->config->server['telegram_file'].$this->botname."/router.tpl";
         if(file_exists($router)){
@@ -399,6 +424,11 @@ class Telegram{
                 //удаляем лишнее
                 unset($this->router[$router[$i]['id']]['id']);
             }
+        }
+        //обработка файла сообщений
+        $message     = $this->config->server['telegram_file'].$this->botname."/message.ini";
+        if(file_exists($message)){
+            $this->mess = parse_ini_file($message, true);
         }
         //проверка необходимых параметров
         if(isset($this->getContents->message->text)){
@@ -440,9 +470,7 @@ class Telegram{
             }
             //преобразуем кирилицу для параметров
             $temp = array();
-            for($i=0; isset($this->getMessage[$i]); $i++)
-                if($this->getMessage[$i]) $temp[] = $this->json_fix_cyr($this->getMessage[$i]);
-            $this->getMessage = (isset($temp[0]))?$temp:false;
+            $this->getMessage = (isset($this->getMessage[0]))?$this->getMessage:false;
             return true;
         }else if(isset($this->getContents->message->photo)){ //отправка файлов текущему контроллеру
             $this->getMessage = ["#photo"];
@@ -471,7 +499,7 @@ class Telegram{
     //отправка запроса
     public function getContent($mess=''){
         //если пришли элементы массива в отдельности 
-        return file_get_contents($this->url."/bot".$this->config->telegram[$this->botname]['hash']."/".$mess);
+        return file_get_contents($this->url."/bot".$this->config[$this->botname]['hash']."/".$mess);
     }
     //получение переменных
     public function getVar($pars=false){

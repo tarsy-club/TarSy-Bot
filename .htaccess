@@ -1,0 +1,13 @@
+RewriteEngine on
+RewriteBase /
+
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L,QSA]
+
+<Files *_class.php>
+	deny from all
+</Files>
+
+Options -Indexes
+DirectoryIndex index.php
